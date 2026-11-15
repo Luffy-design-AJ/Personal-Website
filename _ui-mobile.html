@@ -1,0 +1,79 @@
+<!doctype html><meta charset="utf-8">
+<body style="margin:0">
+<iframe id="f" src="projects.html#palate" style="width:390px;height:900px;border:0"></iframe>
+<pre id="out">running</pre>
+<script>
+(function () {
+  var out = [];
+  function p(s) { out.push(s); }
+  function done() { document.getElementById("out").textContent = out.join("\n"); }
+  function submit(d, w, val) {
+    var input = d.querySelector(".palate__in");
+    input.value = val;
+    var form = d.querySelector(".palate__form");
+    form.dispatchEvent(new w.Event("submit", { bubbles: true, cancelable: true }));
+  }
+  window.addEventListener("load", function () {
+    setTimeout(function () {
+      try {
+        var f = document.getElementById("f");
+        var d = f.contentDocument, w = f.contentWindow;
+        var log = d.querySelector(".palate__log");
+        var term = d.querySelector(".term--live");
+        var opt = d.querySelector(".palate__opt");
+        p("MOBILE term=" + Math.round(term.getBoundingClientRect().width) +
+          " font=" + w.getComputedStyle(d.querySelector(".palate")).fontSize +
+          " optW=" + Math.round(opt.getBoundingClientRect().width) +
+          " log=" + log.clientHeight + "/" + log.scrollHeight +
+          " pageOverflow=" + (d.documentElement.scrollWidth > d.documentElement.clientWidth));
+
+        // typed input: energizing
+        submit(d, w, "10");
+        setTimeout(function () {
+          var blocks = d.querySelectorAll(".palate__block");
+          var last = blocks[blocks.length - 1];
+          p("AFTER 10 blocks=" + blocks.length + " opts=" + last.querySelectorAll(".palate__opt[data-aid]").length +
+            " q=" + (last.querySelector(".palate__q") || {}).textContent);
+
+          // invalid input
+          submit(d, w, "abc");
+          var hint = d.querySelector(".palate__hint--error");
+          p("INVALID hint=" + (hint ? hint.textContent : "none"));
+
+          // q -> results after only one seed
+          submit(d, w, "q");
+          setTimeout(function () {
+            var text = log.textContent;
+            p("Q RESULTS: " + /RECOMMENDED after 1 answers/.test(text) +
+              " formHidden=" + d.querySelector(".palate__form").hidden);
+            var rows = d.querySelectorAll(".palate__res");
+            var overflow = false;
+            rows.forEach(function (r) { if (r.scrollWidth > r.clientWidth + 1) overflow = true; });
+            p("RES rows=" + rows.length + " rowOverflow=" + overflow +
+              " logOverflowX=" + (log.scrollWidth > log.clientWidth));
+            p("RESULTS TEXT: " + text.slice(text.indexOf("RECOMMENDED"), text.indexOf("RECOMMENDED") + 220));
+
+            // restart
+            var again = d.querySelector(".palate__again button");
+            p("RESTART button=" + (again ? again.textContent : "none"));
+            if (again) again.click();
+            setTimeout(function () {
+              var t2 = log.textContent;
+              p("AFTER RESTART: hasSeed=" + /How are you feeling right now\?/.test(t2) +
+                " hasResults=" + /RECOMMENDED/.test(t2) +
+                " blocks=" + d.querySelectorAll(".palate__block").length +
+                " formVisible=" + !d.querySelector(".palate__form").hidden);
+              done();
+            }, 300);
+          }, 500);
+        }, 500);
+      } catch (err) {
+        p("ERROR " + err.message + "\n" + err.stack);
+        done();
+      }
+    }, 2000);
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,53 @@
+<!doctype html><meta charset="utf-8">
+<body>
+<pre id="out">running</pre>
+<script src="content/palate-data.js"></script>
+<script src="assets/js/palate-engine.js"></script>
+<script>
+(function () {
+  var out = [];
+  function p(s) { out.push(s); }
+  try {
+    var t0 = performance.now();
+    var e = PalateEngine.create(window.PALATE_DATA, "enthusiastic");
+    var t1 = performance.now();
+    p("BUILD " + (t1 - t0).toFixed(0) + "ms");
+    e.answerByKey("seed.mood", "energizing");
+    e.answerByKey("seed.time", "lt15");
+    p("SEEDSTATE " + e.entropy().toFixed(6) + " " + e.effectiveCandidates().toFixed(6) + " " + e.top1Prob().toFixed(6) + " [" + e.top(3).map(function (x) { return x.recipe.name; }).join(", ") + "]");
+
+    var picks = [3, 11, 11, 5, 3];
+    for (var step = 0; step < picks.length; step++) {
+      if (e.shouldStop(10, 2)) { p("STOP before step " + (step + 1)); break; }
+      var sel = e.selectQuestion();
+      var q = sel.question;
+      p("Q" + (step + 1) + " " + q.id + " | " + q.text + " | n= " + q.answers.length + " | ig= " + sel.information_gain.toFixed(6) + " | cand= " + e.candidateQuestionCount());
+      q.answers.forEach(function (a, i) { p("   " + (i + 1) + ") " + a.label); });
+      var pick = picks[step];
+      var aid = q.answers[pick - 1].id;
+      p("   PICK " + pick + " " + aid);
+      e.answer(aid);
+      if (step === 2) p("TIE3 " + e.recipes.map(function(r,i){return [r.id,i,e.p[i]];}).filter(function(x){return x[0]==="omelette"||x[0]==="gen-spanish-019";}).map(function(x){return x[0]+"@"+x[1]+"="+x[2].toPrecision(20);}).join(" "));
+      p("   STATE " + e.entropy().toFixed(6) + " " + e.effectiveCandidates().toFixed(6) + " " + e.top1Prob().toFixed(6) + " [" + e.top(3).map(function (x) { return x.recipe.name; }).join(", ") + "]");
+    }
+    p("STOP? " + e.shouldStop(10, 2) + " history " + e.history.length);
+    p("RESULTS " + e.top1Prob().toFixed(6));
+    e.top(5).forEach(function (x, i) {
+      p("  " + (i + 1) + ". " + x.recipe.name + " | " + x.recipe.cuisines.map(function (c) { return c.charAt(0).toUpperCase() + c.slice(1); }).join(", ") + " | " + x.recipe.cook_minutes + " min | p=" + x.p.toFixed(6));
+    });
+    p("EXPLAIN");
+    e.explain(e.top(1)[0].recipe.id).forEach(p);
+
+    // a few direct likelihood spot checks
+    var q0 = e.questions[0], r0 = e.recipes[0];
+    p("TIE " + e.recipes.map(function(r,i){return [r.id,i,e.p[i]];}).filter(function(x){return x[0]==="omelette"||x[0]==="gen-spanish-019";}).map(function(x){return x[0]+"="+x[2].toPrecision(20);}).join(" "));
+    p("SPOT " + q0.id + " " + r0.id + " " + e.likelihood[0].map(function (row) { return row[0].toFixed(6); }).join(" "));
+    p("SPOT2 " + e.questions[384].id + " " + e.recipes[100].id + " " + e.likelihood[384].map(function (row) { return row[100].toFixed(6); }).join(" "));
+  } catch (err) {
+    p("ERROR " + err.message + "\n" + err.stack);
+  }
+  document.getElementById("out").textContent = out.join("\n");
+})();
+</script>
+</body>
+</html>
